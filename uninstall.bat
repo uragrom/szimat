@@ -1,37 +1,15 @@
 @echo off
-chcp 65001 >nul
-echo ========================================
-echo Удаление пункта "Сжать видео" из контекстного меню
-echo ========================================
-echo.
-
-REM Переход в папку, где находится батник
+setlocal
 cd /d "%~dp0"
 
-REM Проверка прав администратора
 net session >nul 2>&1
-if %errorLevel% neq 0 (
-    echo ОШИБКА: Требуются права администратора!
-    echo Пожалуйста, запустите этот файл от имени администратора.
+if not %errorlevel%==0 (
+    echo ERROR: Run as Administrator!
     pause
     exit /b 1
 )
 
-echo Запуск удаления...
-python install_context_menu.py --remove
-
-if %errorLevel% equ 0 (
-    echo.
-    echo ========================================
-    echo Удаление завершено успешно!
-    echo ========================================
-    echo.
-) else (
-    echo.
-    echo ========================================
-    echo Ошибка при удалении!
-    echo ========================================
-    echo.
-)
-
+echo Removing context menu entries...
+python install_runner.py --remove
 pause
+endlocal

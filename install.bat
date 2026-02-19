@@ -1,41 +1,22 @@
 @echo off
-chcp 65001 >nul
-echo ========================================
-echo Установка пункта "Сжать видео" в контекстное меню
-echo ========================================
-echo.
-
-REM Переход в папку, где находится батник
+setlocal
 cd /d "%~dp0"
 
-REM Проверка прав администратора
+REM Check admin rights
 net session >nul 2>&1
-if %errorLevel% neq 0 (
-    echo ОШИБКА: Требуются права администратора!
-    echo Пожалуйста, запустите этот файл от имени администратора.
+if not %errorlevel%==0 (
+    echo ERROR: Run as Administrator! Right-click install.bat - Run as administrator
     pause
     exit /b 1
 )
 
-echo Запуск установки...
-python install_context_menu.py
-
-if %errorLevel% equ 0 (
+python install_runner.py
+set PY_ERR=%errorlevel%
+if not %PY_ERR%==0 (
     echo.
-    echo ========================================
-    echo Установка завершена успешно!
-    echo ========================================
-    echo.
-    echo Для применения изменений:
-    echo 1. Перезапустите проводник Windows (Ctrl+Shift+Esc, найти explorer.exe, перезапустить)
-    echo 2. Или перезагрузите компьютер
-    echo.
-) else (
-    echo.
-    echo ========================================
-    echo Ошибка при установке!
-    echo ========================================
-    echo.
+    echo Installation failed. Check messages above.
 )
 
 pause
+endlocal
+exit /b %PY_ERR%
