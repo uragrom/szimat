@@ -9,6 +9,7 @@ import os
 import sys
 import subprocess
 import shutil
+import tempfile
 from pathlib import Path
 
 
@@ -149,15 +150,49 @@ def compress_video(input_path, output_path, quality='medium'):
             print(f"  Новый размер: {output_size:.2f} MB")
             print(f"  Сжатие: {compression_ratio:.1f}%")
             print(f"  Файл сохранен: {output_path}")
+        elif 'Permission denied' in stderr or 'Отказано в доступе' in stderr:
+            # Пробуем сохранить в папку Temp
+            fallback_path = generate_output_filename_in_temp(input_path)
+            print("\nВ исходную папку записать не удалось (нет прав или файл открыт).")
+            print(f"Повторная попытка: сохранение в {fallback_path}")
+            cmd[-1] = fallback_path
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                universal_newlines=True
+            )
+            stdout, stderr = process.communicate()
+            if process.returncode == 0:
+                input_size = os.path.getsize(input_path) / (1024 * 1024)  # MB
+                output_size = os.path.getsize(fallback_path) / (1024 * 1024)  # MB
+                compression_ratio = (1 - output_size / input_size) * 100
+                print(f"\n✓ Видео успешно сжато!")
+                print(f"  Исходный размер: {input_size:.2f} MB")
+                print(f"  Новый размер: {output_size:.2f} MB")
+                print(f"  Сжатие: {compression_ratio:.1f}%")
+                print(f"  Файл сохранён в папку Temp:")
+                print(f"  {fallback_path}")
+            else:
+                print(f"ОШИБКА при сжатии видео:")
+                print(stderr)
+                print("\nВозможные причины «Отказано в доступе»:")
+                print("  • Закройте файл, если он открыт в плеере или редакторе")
+                print("  • Запустите скрипт от имени администратора")
+                print("  • Сохраните результат в другую папку (например, Рабочий стол)")
+                input("\nНажмите Enter для выхода...")
+                sys.exit(1)
         else:
             print(f"ОШИБКА при сжатии видео:")
             print(stderr)
+            input("\nНажмите Enter для выхода...")
             sys.exit(1)
             
     except Exception as e:
         print(f"ОШИБКА: {str(e)}")
         import traceback
         traceback.print_exc()
+        input("\nНажмите Enter для выхода...")
         sys.exit(1)
 
 
@@ -257,12 +292,14 @@ def convert_video(input_path, output_path, output_format='mp4'):
         else:
             print(f"ОШИБКА при конвертации видео:")
             print(stderr)
+            input("\nНажмите Enter для выхода...")
             sys.exit(1)
             
     except Exception as e:
         print(f"ОШИБКА: {str(e)}")
         import traceback
         traceback.print_exc()
+        input("\nНажмите Enter для выхода...")
         sys.exit(1)
 
 
@@ -272,6 +309,7 @@ def compress_audio(input_path, output_path, quality='medium'):
     
     if not ffmpeg_path:
         print("ОШИБКА: ffmpeg не найден!")
+        input("\nНажмите Enter для выхода...")
         sys.exit(1)
     
     # Параметры сжатия для аудио
@@ -306,9 +344,11 @@ def compress_audio(input_path, output_path, quality='medium'):
             print(f"  Сжатие: {compression_ratio:.1f}%")
         else:
             print(f"ОШИБКА: {stderr}")
+            input("\nНажмите Enter для выхода...")
             sys.exit(1)
     except Exception as e:
         print(f"ОШИБКА: {str(e)}")
+        input("\nНажмите Enter для выхода...")
         sys.exit(1)
 
 
@@ -318,6 +358,7 @@ def compress_image(input_path, output_path, quality='medium'):
     
     if not ffmpeg_path:
         print("ОШИБКА: ffmpeg не найден!")
+        input("\nНажмите Enter для выхода...")
         sys.exit(1)
     
     # Параметры сжатия для изображений
@@ -356,9 +397,11 @@ def compress_image(input_path, output_path, quality='medium'):
             print(f"  Сжатие: {compression_ratio:.1f}%")
         else:
             print(f"ОШИБКА: {stderr}")
+            input("\nНажмите Enter для выхода...")
             sys.exit(1)
     except Exception as e:
         print(f"ОШИБКА: {str(e)}")
+        input("\nНажмите Enter для выхода...")
         sys.exit(1)
 
 
@@ -385,6 +428,7 @@ def compress_file(input_path, output_path=None, quality='medium'):
     
     if not file_type:
         print(f"ОШИБКА: Неподдерживаемый тип файла: {input_path}")
+        input("\nНажмите Enter для выхода...")
         sys.exit(1)
     
     if not output_path:
@@ -424,6 +468,23 @@ def generate_output_filename(input_path):
         output_path = directory / output_name
         counter += 1
     
+    return str(output_path)
+
+
+def generate_output_filename_in_temp(input_path):
+    """Генерирует путь для сохранения в папку Temp (если в исходной папке нет прав записи)."""
+    path = Path(input_path)
+    directory = Path(tempfile.gettempdir()) / "video_compressed"
+    directory.mkdir(parents=True, exist_ok=True)
+    stem = path.stem
+    suffix = path.suffix
+    output_name = f"{stem}compresed001{suffix}"
+    output_path = directory / output_name
+    counter = 1
+    while output_path.exists():
+        output_name = f"{stem}compresed001_{counter}{suffix}"
+        output_path = directory / output_name
+        counter += 1
     return str(output_path)
 
 
